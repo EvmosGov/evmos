@@ -84,7 +84,7 @@ The `deposit` of `3500000000000000000000aevmos` results in 3500 EVMOS being used
       "amount": "1000000000000000000"
     }
   ],
-  "deposit": "64000000000000000000aevmos"
+  "deposit": "3500000000000000000000aevmos"
 }
 
 ```
@@ -110,7 +110,7 @@ Users can query the proposal details with the `evmosd` command-line interface us
       "denom": "aevmos"
     }
   ],
-  "deposit": "64000000000000000000aevmos"
+  "deposit": "3500000000000000000000aevmos"
 }
 ```
 
