@@ -1,10 +1,26 @@
+// Copyright 2022 Evmos Foundation
+// This file is part of the Evmos Network packages.
+//
+// Evmos is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Evmos packages are distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+
 package keeper
 
 import (
 	"math/big"
 	"strconv"
 
-	sdkerrors "cosmossdk.io/errors"
+	errorsmod "cosmossdk.io/errors"
 	"cosmossdk.io/math"
 	"github.com/armon/go-metrics"
 	"github.com/cosmos/cosmos-sdk/telemetry"
@@ -12,7 +28,7 @@ import (
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/evmos/evmos/v9/x/incentives/types"
+	"github.com/evmos/evmos/v11/x/incentives/types"
 )
 
 // DistributeRewards transfers the allocated rewards to the participants of a given
@@ -31,7 +47,7 @@ func (k Keeper) DistributeRewards(ctx sdk.Context) error {
 	}
 
 	k.IterateIncentives(ctx, func(incentive types.Incentive) (stop bool) {
-		rewards, participants := k.rewardParticipants(ctx, incentive, rewardAllocations)
+		_, _ = k.rewardParticipants(ctx, incentive, rewardAllocations)
 
 		incentive.Epochs--
 
@@ -47,18 +63,6 @@ func (k Keeper) DistributeRewards(ctx sdk.Context) error {
 				"contract", incentive.Contract,
 			)
 		}
-
-		defer func() {
-			if !rewards.IsZero() {
-				telemetry.IncrCounterWithLabels(
-					[]string{types.ModuleName, "distribute", "participant", "total"},
-					float32(participants),
-					[]metrics.Label{
-						telemetry.NewLabel("contract", incentive.Contract),
-					},
-				)
-			}
-		}()
 
 		ctx.EventManager().EmitEvent(
 			sdk.NewEvent(
@@ -152,7 +156,7 @@ func (k Keeper) rewardAllocations(
 
 	// checks if module account has sufficient balance for allocation
 	if rewards.IsAnyGT(escrow) {
-		return nil, nil, sdkerrors.Wrapf(
+		return nil, nil, errorsmod.Wrapf(
 			errortypes.ErrInsufficientFunds,
 			"escrowed balance < total coins allocated (%s < %s)",
 			escrow, rewards,

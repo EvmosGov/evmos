@@ -1,12 +1,28 @@
+// Copyright 2022 Evmos Foundation
+// This file is part of the Evmos Network packages.
+//
+// Evmos is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Evmos packages are distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+
 package keeper
 
 import (
-	sdkerrors "cosmossdk.io/errors"
+	errorsmod "cosmossdk.io/errors"
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 
-	"github.com/evmos/evmos/v9/x/claims/types"
+	"github.com/evmos/evmos/v11/x/claims/types"
 )
 
 // ClaimCoinsForAction removes the claimable amount entry from a claims record
@@ -19,7 +35,7 @@ func (k Keeper) ClaimCoinsForAction(
 	params types.Params,
 ) (math.Int, error) {
 	if action == types.ActionUnspecified || action > types.ActionIBCTransfer {
-		return sdk.ZeroInt(), sdkerrors.Wrapf(types.ErrInvalidAction, "%d", action)
+		return sdk.ZeroInt(), errorsmod.Wrapf(types.ErrInvalidAction, "%d", action)
 	}
 
 	// If we are before the start time, after end time, or claims are disabled, do nothing.
@@ -106,7 +122,7 @@ func (k Keeper) MergeClaimsRecords(
 		//  - the sender is not an evmos address and can't claim vote, delegation or evm actions
 		//  - the first attempt to perform an ibc callback from the senders account will merge/migrate the entire claims record
 		if senderClaimsRecord.HasClaimedAction(action) {
-			return types.ClaimsRecord{}, sdkerrors.Wrapf(errortypes.ErrNotSupported, "non-evmos sender must not have claimed action: %v", action)
+			return types.ClaimsRecord{}, errorsmod.Wrapf(errortypes.ErrNotSupported, "non-evmos sender must not have claimed action: %v", action)
 		}
 
 		recipientCompleted := recipientClaimsRecord.HasClaimedAction(action)

@@ -1,9 +1,23 @@
+// Copyright 2022 Evmos Foundation
+// This file is part of the Evmos Network packages.
+//
+// Evmos is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Evmos packages are distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+
 package keeper
 
 import (
-	sdkerrors "cosmossdk.io/errors"
-	"github.com/armon/go-metrics"
-	"github.com/cosmos/cosmos-sdk/telemetry"
+	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/ethereum/go-ethereum/core"
@@ -11,7 +25,7 @@ import (
 
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 
-	"github.com/evmos/evmos/v9/x/revenue/types"
+	"github.com/evmos/evmos/v11/x/revenue/types"
 )
 
 var _ evmtypes.EvmHooks = Hooks{}
@@ -76,38 +90,23 @@ func (k Keeper) PostTxProcessing(
 		fees,
 	)
 	if err != nil {
-		return sdkerrors.Wrapf(
+		return errorsmod.Wrapf(
 			err,
 			"fee collector account failed to distribute developer fees (%s) to withdraw address %s. contract %s",
 			fees, withdrawer, contract,
 		)
 	}
 
-	defer func() {
-		if developerFee.IsInt64() {
-			telemetry.IncrCounterWithLabels(
-				[]string{types.ModuleName, "distribute", "total"},
-				float32(developerFee.Int64()),
-				[]metrics.Label{
-					telemetry.NewLabel("sender", msg.From().String()),
-					telemetry.NewLabel("withdraw_address", withdrawer.String()),
-					telemetry.NewLabel("contract", revenue.ContractAddress),
-				},
-			)
-		}
-	}()
+	err = ctx.EventManager().EmitTypedEvent(&types.EventDistributeRevenue{
+		Sender:            msg.From().String(),
+		Contract:          contract.String(),
+		WithdrawerAddress: withdrawer.String(),
+		Amount:            developerFee.String(),
+	})
 
-	ctx.EventManager().EmitEvents(
-		sdk.Events{
-			sdk.NewEvent(
-				types.EventTypeDistributeDevRevenue,
-				sdk.NewAttribute(sdk.AttributeKeySender, msg.From().String()),
-				sdk.NewAttribute(types.AttributeKeyContract, contract.String()),
-				sdk.NewAttribute(types.AttributeKeyWithdrawerAddress, withdrawer.String()),
-				sdk.NewAttribute(sdk.AttributeKeyAmount, developerFee.String()),
-			),
-		},
-	)
+	if err != nil {
+		k.Logger(ctx).Error(err.Error())
+	}
 
 	return nil
 }

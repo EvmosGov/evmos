@@ -38,7 +38,7 @@ The following topics must be addressed when drafting a Contract Incentives Propo
 
     Give a breakdown of the proposal's payload, and explain in layman's terms what the proposal will do if it passes. For the smart contract in question, provide general information on its purpose, along with an argument for why it requires incentives. Mention risks involved in the proposal, depending on the traction of the smart contract involved and the timetable for the proposed incentives. Finally, detail precautions taken during proposal formulation, if applicable (including consultations made prior to proposal creation, and any third-party reviews).
 
-Remember to provide links to the relevant [Commonwealth Evmos community](https://commonwealth.im/evmos) discussions concerning your proposal, as well as the [proposal on testnet](#submit-the-proposal-to-the-testnet).
+Remember to provide links to the relevant [Commonwealth Evmos community](https://commonwealth.im/evmos) discussions concerning your proposal, as well as the [proposal on testnet](#submit-the-proposal-to-testnet).
 
 ## Submitting the Contract Incentives Proposal
 
@@ -57,7 +57,7 @@ writing markdown files.
 To [submit the proposal](../../users/governance/submitting.md) to testnet through the command line with [`evmosd`](../../validators/quickstart/binary.md), use the following command with `register-incentive`:
 
 ```bash
-evmosd tx gov submit-proposal \
+evmosd tx gov submit-legacy-proposal \
   register-incentive \
   $CONTRACTADDRESS \
   $ALLOCATION \
@@ -65,7 +65,7 @@ evmosd tx gov submit-proposal \
   --title=<title> \
   --description=<description> \
   --deposit="1000000aevmos" \
-  --from=<mykey> \
+  --from=<dev0> \
   --chain-id=<testnet_chain_id> \
   --node <address>
 ```
@@ -83,13 +83,13 @@ with the following arguments:
 See below for an example using [Diffusion Finance's](https://diffusion.fi/) router contract:
 
 ```bash
-evmosd tx gov submit-proposal register-incentive 0xFCd2Ce20ef8ed3D43Ab4f8C2dA13bbF1C6d9512F 0.050000000000000000aevmos 13 --description=$DESCRIPTION --title=$PROPOSALTITLE
+evmosd tx gov submit-legacy-proposal register-incentive 0xFCd2Ce20ef8ed3D43Ab4f8C2dA13bbF1C6d9512F 0.050000000000000000aevmos 13 --description=$DESCRIPTION --title=$PROPOSALTITLE
 ```
 
 However, note that if the CLI is used to create a proposal, and `description` is set using a flag, the text will be [escaped](https://en.wikipedia.org/wiki/Escape_sequences_in_C) which may have undesired effects. If the proposal creator is using markdown or line breaks it's recommended to put the proposal text into a json file and include that file as part of the CLI proposal, as opposed to individual fields in flags. The process of creating a json file containing the proposal can be found [here](../../users/governance/submitting.md#formatting-the-json-file-for-the-governance-proposal), and the CLI command for submitting the file is below:
 
 ```bash
-evmosd tx gov submit-proposal register-incentive --proposal=<path_to_json>
+evmosd tx gov submit-legacy-proposal register-incentive --proposal=<path_to_json>
 ```
 
 You may want to submit your proposal to the testnet chain before the mainnet for a number of reasons, such as wanting to see what the proposal description will look like, to share what the proposal will look like in advance with stakeholders, and to signal that your proposal is about to go live on the mainnet.
@@ -137,7 +137,7 @@ Evmos supports the following metrics related to the `x/incentives` module, which
 | `incentives_distribute_participant_total`      | Total number of participants who received rewards                                   | participant | counter |
 | `incentives_distribute_reward_total`           | Total amount of rewards that are distributed to all incentives' participants        | token       | counter |
 
-To calculate specific values, such as paid out incentives to a given smart contract user, custom metrics will have to be made following the [above section](#emitting--collecting-metrics).
+To calculate specific values, such as paid out incentives to a given smart contract user, custom metrics will have to be made following the [above section](#telemetry-basics--setup).
 
 In addition, gRPC queries related to the `x/incentives` module found [here](../../../x/incentives/spec/08_clients.md#clients) can produce useful analysis.
 
@@ -145,5 +145,5 @@ In addition, gRPC queries related to the `x/incentives` module found [here](../.
 
 See the telemetry sources below for details not covered above:
 
-- [Cosmos SDK Telemetry Documentation](https://docs.cosmos.network/master/core/telemetry.html)
+- [Cosmos SDK Telemetry Documentation](https://docs.cosmos.network/main/core/telemetry.html)
 - [Evmos Supported Telemetry Metrics](https://docs.evmos.org/protocol/telemetry.html)

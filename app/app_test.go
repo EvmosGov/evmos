@@ -20,13 +20,15 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/evmos/ethermint/encoding"
-	"github.com/evmos/evmos/v9/types"
-	claimstypes "github.com/evmos/evmos/v9/x/claims/types"
+	"github.com/evmos/evmos/v11/types"
+	claimstypes "github.com/evmos/evmos/v11/x/claims/types"
 )
 
 func TestEvmosExport(t *testing.T) {
+	// create public key
 	privVal := mock.NewPV()
-	pubKey, _ := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey()
+	require.NoError(t, err, "public key should be created without error")
 
 	// create validator set with single validator
 	validator := tmtypes.NewValidator(pubKey, 1)

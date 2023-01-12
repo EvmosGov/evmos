@@ -3,12 +3,14 @@ package keeper_test
 import (
 	"fmt"
 
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/evmos/ethermint/crypto/ethsecp256k1"
 	"github.com/evmos/ethermint/tests"
-	"github.com/evmos/evmos/v9/testutil"
+	"github.com/evmos/evmos/v11/testutil"
 	"github.com/stretchr/testify/mock"
 
 	transfertypes "github.com/cosmos/ibc-go/v5/modules/apps/transfer/types"
@@ -17,11 +19,11 @@ import (
 	ibcgotesting "github.com/cosmos/ibc-go/v5/testing"
 	ibcmock "github.com/cosmos/ibc-go/v5/testing/mock"
 
-	claimstypes "github.com/evmos/evmos/v9/x/claims/types"
-	incentivestypes "github.com/evmos/evmos/v9/x/incentives/types"
-	"github.com/evmos/evmos/v9/x/recovery/keeper"
-	"github.com/evmos/evmos/v9/x/recovery/types"
-	vestingtypes "github.com/evmos/evmos/v9/x/vesting/types"
+	claimstypes "github.com/evmos/evmos/v11/x/claims/types"
+	incentivestypes "github.com/evmos/evmos/v11/x/incentives/types"
+	"github.com/evmos/evmos/v11/x/recovery/keeper"
+	"github.com/evmos/evmos/v11/x/recovery/types"
+	vestingtypes "github.com/evmos/evmos/v11/x/vesting/types"
 )
 
 func (suite *KeeperTestSuite) TestOnRecvPacket() {
@@ -221,7 +223,8 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 
 				invalidDenom := "ibc/1"
 				coins := sdk.NewCoins(sdk.NewCoin(invalidDenom, sdk.NewInt(1000)))
-				testutil.FundAccount(suite.app.BankKeeper, suite.ctx, secpAddr, coins)
+				err := testutil.FundAccount(suite.ctx, suite.app.BankKeeper, secpAddr, coins)
+				suite.Require().NoError(err)
 			},
 			false,
 			false,
@@ -314,12 +317,15 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 			mockTransferKeeper.On("GetDenomTrace", mock.Anything, mock.Anything).Return(denomTrace, true)
 			mockTransferKeeper.On("SendTransfer", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-			sp, found := suite.app.ParamsKeeper.GetSubspace(types.ModuleName)
-			suite.Require().True(found)
-			suite.app.RecoveryKeeper = keeper.NewKeeper(sp, suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.IBCKeeper.ChannelKeeper, mockTransferKeeper, suite.app.ClaimsKeeper)
+			suite.app.RecoveryKeeper = keeper.NewKeeper(
+				suite.app.GetKey(types.StoreKey),
+				suite.app.AppCodec(),
+				authtypes.NewModuleAddress(govtypes.ModuleName),
+				suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.IBCKeeper.ChannelKeeper, mockTransferKeeper, suite.app.ClaimsKeeper)
 
 			// Fund receiver account with EVMOS, ERC20 coins and IBC vouchers
-			testutil.FundAccount(suite.app.BankKeeper, suite.ctx, secpAddr, coins)
+			err := testutil.FundAccount(suite.ctx, suite.app.BankKeeper, secpAddr, coins)
+			suite.Require().NoError(err)
 
 			// Perform IBC callback
 			ack := suite.app.RecoveryKeeper.OnRecvPacket(suite.ctx, packet, expAck)
@@ -569,16 +575,19 @@ func (suite *KeeperTestSuite) TestOnRecvPacketFailTransfer() {
 
 			tc.malleate()
 
-			sp, found := suite.app.ParamsKeeper.GetSubspace(types.ModuleName)
-			suite.Require().True(found)
-			suite.app.RecoveryKeeper = keeper.NewKeeper(sp, suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.IBCKeeper.ChannelKeeper, mockTransferKeeper, suite.app.ClaimsKeeper)
+			suite.app.RecoveryKeeper = keeper.NewKeeper(
+				suite.app.GetKey(types.StoreKey),
+				suite.app.AppCodec(),
+				authtypes.NewModuleAddress(govtypes.ModuleName),
+				suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.IBCKeeper.ChannelKeeper, mockTransferKeeper, suite.app.ClaimsKeeper)
 
 			// Fund receiver account with EVMOS
 			coins := sdk.NewCoins(
 				sdk.NewCoin("aevmos", sdk.NewInt(1000)),
 				sdk.NewCoin(ibcAtomDenom, sdk.NewInt(1000)),
 			)
-			testutil.FundAccount(suite.app.BankKeeper, suite.ctx, secpAddr, coins)
+			err := testutil.FundAccount(suite.ctx, suite.app.BankKeeper, secpAddr, coins)
+			suite.Require().NoError(err)
 
 			// Perform IBC callback
 			ack := suite.app.RecoveryKeeper.OnRecvPacket(suite.ctx, packet, expAck)

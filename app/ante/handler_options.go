@@ -1,7 +1,23 @@
+// Copyright 2022 Evmos Foundation
+// This file is part of the Evmos Network packages.
+//
+// Evmos is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Evmos packages are distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+
 package ante
 
 import (
-	sdkerrors "cosmossdk.io/errors"
+	errorsmod "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
@@ -15,7 +31,7 @@ import (
 	ethante "github.com/evmos/ethermint/app/ante"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 
-	vestingtypes "github.com/evmos/evmos/v9/x/vesting/types"
+	vestingtypes "github.com/evmos/evmos/v11/x/vesting/types"
 )
 
 // HandlerOptions defines the list of module keepers required to run the Evmos
@@ -25,7 +41,7 @@ type HandlerOptions struct {
 	BankKeeper             evmtypes.BankKeeper
 	ExtensionOptionChecker ante.ExtensionOptionChecker
 	IBCKeeper              *ibckeeper.Keeper
-	FeeMarketKeeper        evmtypes.FeeMarketKeeper
+	FeeMarketKeeper        ethante.FeeMarketKeeper
 	StakingKeeper          vestingtypes.StakingKeeper
 	EvmKeeper              ethante.EVMKeeper
 	FeegrantKeeper         ante.FeegrantKeeper
@@ -39,22 +55,22 @@ type HandlerOptions struct {
 // Validate checks if the keepers are defined
 func (options HandlerOptions) Validate() error {
 	if options.AccountKeeper == nil {
-		return sdkerrors.Wrap(errortypes.ErrLogic, "account keeper is required for AnteHandler")
+		return errorsmod.Wrap(errortypes.ErrLogic, "account keeper is required for AnteHandler")
 	}
 	if options.BankKeeper == nil {
-		return sdkerrors.Wrap(errortypes.ErrLogic, "bank keeper is required for AnteHandler")
+		return errorsmod.Wrap(errortypes.ErrLogic, "bank keeper is required for AnteHandler")
 	}
 	if options.StakingKeeper == nil {
-		return sdkerrors.Wrap(errortypes.ErrLogic, "staking keeper is required for AnteHandler")
+		return errorsmod.Wrap(errortypes.ErrLogic, "staking keeper is required for AnteHandler")
 	}
 	if options.SignModeHandler == nil {
-		return sdkerrors.Wrap(errortypes.ErrLogic, "sign mode handler is required for ante builder")
+		return errorsmod.Wrap(errortypes.ErrLogic, "sign mode handler is required for ante builder")
 	}
 	if options.FeeMarketKeeper == nil {
-		return sdkerrors.Wrap(errortypes.ErrLogic, "fee market keeper is required for AnteHandler")
+		return errorsmod.Wrap(errortypes.ErrLogic, "fee market keeper is required for AnteHandler")
 	}
 	if options.EvmKeeper == nil {
-		return sdkerrors.Wrap(errortypes.ErrLogic, "evm keeper is required for AnteHandler")
+		return errorsmod.Wrap(errortypes.ErrLogic, "evm keeper is required for AnteHandler")
 	}
 	return nil
 }
@@ -84,13 +100,12 @@ func newCosmosAnteHandler(options HandlerOptions) sdk.AnteHandler {
 		ante.NewSetUpContextDecorator(),
 		ante.NewExtensionOptionsDecorator(options.ExtensionOptionChecker),
 		ante.NewValidateBasicDecorator(),
-		ethante.NewMinGasPriceDecorator(options.FeeMarketKeeper, options.EvmKeeper),
 		ante.NewTxTimeoutHeightDecorator(),
 		ante.NewValidateMemoDecorator(options.AccountKeeper),
+		ethante.NewMinGasPriceDecorator(options.FeeMarketKeeper, options.EvmKeeper),
 		ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),
 		ante.NewDeductFeeDecorator(options.AccountKeeper, options.BankKeeper, options.FeegrantKeeper, options.TxFeeChecker),
 		NewVestingDelegationDecorator(options.AccountKeeper, options.StakingKeeper, options.Cdc),
-		NewValidatorCommissionDecorator(options.Cdc),
 		// SetPubKeyDecorator must be called before all signature verification decorators
 		ante.NewSetPubKeyDecorator(options.AccountKeeper),
 		ante.NewValidateSigCountDecorator(options.AccountKeeper),
@@ -103,24 +118,24 @@ func newCosmosAnteHandler(options HandlerOptions) sdk.AnteHandler {
 }
 
 // newCosmosAnteHandlerEip712 creates the ante handler for transactions signed with EIP712
-func newCosmosAnteHandlerEip712(options HandlerOptions) sdk.AnteHandler {
+func newLegacyCosmosAnteHandlerEip712(options HandlerOptions) sdk.AnteHandler {
 	return sdk.ChainAnteDecorators(
 		ethante.RejectMessagesDecorator{}, // reject MsgEthereumTxs
 		ante.NewSetUpContextDecorator(),
 		ante.NewValidateBasicDecorator(),
-		ethante.NewMinGasPriceDecorator(options.FeeMarketKeeper, options.EvmKeeper),
 		ante.NewTxTimeoutHeightDecorator(),
+		ethante.NewMinGasPriceDecorator(options.FeeMarketKeeper, options.EvmKeeper),
 		ante.NewValidateMemoDecorator(options.AccountKeeper),
 		ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),
 		ante.NewDeductFeeDecorator(options.AccountKeeper, options.BankKeeper, options.FeegrantKeeper, options.TxFeeChecker),
 		NewVestingDelegationDecorator(options.AccountKeeper, options.StakingKeeper, options.Cdc),
-		NewValidatorCommissionDecorator(options.Cdc),
 		// SetPubKeyDecorator must be called before all signature verification decorators
 		ante.NewSetPubKeyDecorator(options.AccountKeeper),
 		ante.NewValidateSigCountDecorator(options.AccountKeeper),
 		ante.NewSigGasConsumeDecorator(options.AccountKeeper, options.SigGasConsumer),
 		// Note: signature verification uses EIP instead of the cosmos signature validator
-		ethante.NewEip712SigVerificationDecorator(options.AccountKeeper, options.SignModeHandler),
+		// nolint: staticcheck
+		ethante.NewLegacyEip712SigVerificationDecorator(options.AccountKeeper, options.SignModeHandler),
 		ante.NewIncrementSequenceDecorator(options.AccountKeeper),
 		ibcante.NewRedundantRelayDecorator(options.IBCKeeper),
 		ethante.NewGasWantedDecorator(options.EvmKeeper, options.FeeMarketKeeper),

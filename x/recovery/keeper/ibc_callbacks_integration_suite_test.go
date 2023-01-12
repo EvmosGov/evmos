@@ -15,13 +15,13 @@ import (
 	channeltypes "github.com/cosmos/ibc-go/v5/modules/core/04-channel/types"
 	ibcgotesting "github.com/cosmos/ibc-go/v5/testing"
 
-	ibctesting "github.com/evmos/evmos/v9/ibc/testing"
+	ibctesting "github.com/evmos/evmos/v11/ibc/testing"
 
 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
-	"github.com/evmos/evmos/v9/app"
-	claimtypes "github.com/evmos/evmos/v9/x/claims/types"
-	inflationtypes "github.com/evmos/evmos/v9/x/inflation/types"
-	"github.com/evmos/evmos/v9/x/recovery/types"
+	"github.com/evmos/evmos/v11/app"
+	claimstypes "github.com/evmos/evmos/v11/x/claims/types"
+	inflationtypes "github.com/evmos/evmos/v11/x/inflation/types"
+	"github.com/evmos/evmos/v11/x/recovery/types"
 )
 
 type IBCTestingSuite struct {
@@ -83,7 +83,7 @@ func (suite *IBCTestingSuite) SetupTest() {
 	err = suite.IBCCosmosChain.GetSimApp().BankKeeper.SendCoinsFromModuleToAccount(suite.IBCCosmosChain.GetContext(), minttypes.ModuleName, suite.IBCCosmosChain.SenderAccount.GetAddress(), coins)
 	suite.Require().NoError(err)
 
-	claimparams := claimtypes.DefaultParams()
+	claimparams := claimstypes.DefaultParams()
 	claimparams.AirdropStartTime = suite.EvmosChain.GetContext().BlockTime()
 	claimparams.EnableClaims = true
 	suite.EvmosChain.App.(*app.Evmos).ClaimsKeeper.SetParams(suite.EvmosChain.GetContext(), claimparams)
@@ -103,34 +103,7 @@ func (suite *IBCTestingSuite) SetupTest() {
 	suite.Require().Equal("channel-0", suite.pathOsmosisEvmos.EndpointA.ChannelID)
 }
 
-var (
-	timeoutHeight = clienttypes.NewHeight(1000, 1000)
-
-	uosmoDenomtrace = transfertypes.DenomTrace{
-		Path:      "transfer/channel-0",
-		BaseDenom: "uosmo",
-	}
-
-	uosmoIbcdenom = uosmoDenomtrace.IBCDenom()
-
-	uatomDenomtrace = transfertypes.DenomTrace{
-		Path:      "transfer/channel-1",
-		BaseDenom: "uatom",
-	}
-	uatomIbcdenom = uatomDenomtrace.IBCDenom()
-
-	aevmosDenomtrace = transfertypes.DenomTrace{
-		Path:      "transfer/channel-0",
-		BaseDenom: "aevmos",
-	}
-	aevmosIbcdenom = aevmosDenomtrace.IBCDenom()
-
-	uatomOsmoDenomtrace = transfertypes.DenomTrace{
-		Path:      "transfer/channel-0/transfer/channel-1",
-		BaseDenom: "uatom",
-	}
-	uatomOsmoIbcdenom = uatomOsmoDenomtrace.IBCDenom()
-)
+var timeoutHeight = clienttypes.NewHeight(1000, 1000)
 
 func (suite *IBCTestingSuite) SendAndReceiveMessage(path *ibcgotesting.Path, origin *ibcgotesting.TestChain, coin string, amount int64, sender string, receiver string, seq uint64) {
 	// Send coin from A to B

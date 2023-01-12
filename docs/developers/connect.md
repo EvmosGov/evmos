@@ -16,8 +16,7 @@ You can also use [chainlist.org](https://chainlist.org/) to add the node directl
 :::
 
 <!-- markdown-link-check-disable -->
-:::: tabs
-::: tab Mainnet
+### Mainnet
 
 | Address                                       | Category               | Maintainer                              |
 | --------------------------------------------- | ---------------------- | --------------------------------------- |
@@ -27,7 +26,8 @@ You can also use [chainlist.org](https://chainlist.org/) to add the node directl
 | `https://eth.bd.evmos.org:8545`               | `Ethereum` `JSON-RPC`  | [Blockdaemon](https://blockdaemon.com/) |
 | `wss://eth.bd.evmos.org:8546`                 | `Ethereum` `Websocket` | [Blockdaemon](https://blockdaemon.com/) |
 | `https://evmos-json-rpc.stakely.io`           | `Ethereum` `JSON-RPC`  | [Stakely](https://stakely.io/)          |
-| `https://evmos-json-rpc.stakely.io`           | `Ethereum` `JSON-RPC`  | [Stakely](https://stakely.io)           |
+| `https://evmos-rpc.stakely.io`                | `Cosmos` `RPC`         | [Stakely](https://stakely.io/)          |
+| `https://evmos-lcd.stakely.io`                | `Cosmos` `REST`        | [Stakely](https://stakely.io/)          |
 | `https://jsonrpc-evmos-ia.cosmosia.notional.ventures/` | `Ethereum` `JSON-RPC`  | [Notional](https://notional.ventures/)  |
 | `https://rpc-evmos-ia.cosmosia.notional.ventures:443`  | `Tendermint` `RPC`     | [Notional](https://notional.ventures/)  |
 | `https://grpc-evmos-ia.cosmosia.notional.ventures:443` | `Tendermint` `gRPC`    | [Notional](https://notional.ventures/)  |
@@ -47,9 +47,11 @@ You can also use [chainlist.org](https://chainlist.org/) to add the node directl
 | `https://evmos-evm.publicnode.com`            | `Ethereum` `JSON-RPC`  | [PublicNode (by Allnodes)](https://evmos.publicnode.com/) |
 | `https://evmos-rpc.publicnode.com`            | `Tendermint` `RPC`     | [PublicNode (by Allnodes)](https://evmos.publicnode.com/) |
 | `https://evmos-rest.publicnode.com`           | `Cosmos` `REST`        | [PublicNode (by Allnodes)](https://evmos.publicnode.com/) |
+| `https://evmos-api.validatrium.club`           | `Tendermint` `API`        | [Validatrium](https://validatrium.com/) |
+| `https://evmos-rpc.validatrium.club`           | `Tendermint` `RPC`        | [Validatrium](https://validatrium.com/) |
+| `https://evmos-rpc.gateway.pokt.network`      | `Ethereum` `JSON-RPC`  | [PocketNetwork](https://www.pokt.network/)  |
 
-:::
-::: tab Testnet
+### Testnet
 <!-- markdown-link-check-disable -->
 
 | Address                                      | Category               | Maintainer                              |
@@ -67,5 +69,3 @@ You can also use [chainlist.org](https://chainlist.org/) to add the node directl
 | `https://evmos-testnet-rpc.qubelabs.io`      | `Tendermint` `RPC`     | [Qubelabs](https://qubelabs.io/)        |
 | `https://evmos-testnet-lcd.qubelabs.io`      | `Cosmos` `REST`        | [Qubelabs](https://qubelabs.io/)        |
 | `https://evmos-testnet-grpc.qubelabs.io`     | `Cosmos` `gRPC`        | [Qubelabs](https://qubelabs.io/)        |
-:::
-::::

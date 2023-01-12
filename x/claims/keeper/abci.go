@@ -1,14 +1,30 @@
+// Copyright 2022 Evmos Foundation
+// This file is part of the Evmos Network packages.
+//
+// Evmos is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Evmos packages are distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+
 package keeper
 
 import (
 	"strconv"
 
-	sdkerrors "cosmossdk.io/errors"
+	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	vestexported "github.com/cosmos/cosmos-sdk/x/auth/vesting/exported"
 	ethermint "github.com/evmos/ethermint/types"
 
-	"github.com/evmos/evmos/v9/x/claims/types"
+	"github.com/evmos/evmos/v11/x/claims/types"
 )
 
 // EndBlocker checks if the airdrop claiming period has ended in order to
@@ -49,7 +65,11 @@ func (k Keeper) EndAirdrop(ctx sdk.Context, params types.Params) error {
 	// set the EnableClaims param to false so that we don't have to compute
 	// duration every block
 	params.EnableClaims = false
-	k.SetParams(ctx, params)
+	err := k.SetParams(ctx, params)
+	if err != nil {
+		return errorsmod.Wrap(err, "error setting params")
+	}
+
 	logger.Info("end EndAirdrop logic")
 	return nil
 }
@@ -68,7 +88,7 @@ func (k Keeper) ClawbackEscrowedTokens(ctx sdk.Context) error {
 	}
 
 	if err := k.distrKeeper.FundCommunityPool(ctx, balances, moduleAccAddr); err != nil {
-		return sdkerrors.Wrap(err, "failed to transfer escrowed airdrop tokens")
+		return errorsmod.Wrap(err, "failed to transfer escrowed airdrop tokens")
 	}
 
 	logger.Info(

@@ -1,7 +1,23 @@
+// Copyright 2022 Evmos Foundation
+// This file is part of the Evmos Network packages.
+//
+// Evmos is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Evmos packages are distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+
 package types
 
 import (
-	sdkerrors "cosmossdk.io/errors"
+	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/ethereum/go-ethereum/common"
@@ -12,6 +28,7 @@ var (
 	_ sdk.Msg = &MsgRegisterRevenue{}
 	_ sdk.Msg = &MsgCancelRevenue{}
 	_ sdk.Msg = &MsgUpdateRevenue{}
+	_ sdk.Msg = &MsgUpdateParams{}
 )
 
 const (
@@ -49,25 +66,25 @@ func (msg MsgRegisterRevenue) Type() string { return TypeMsgRegisterRevenue }
 // ValidateBasic runs stateless checks on the message
 func (msg MsgRegisterRevenue) ValidateBasic() error {
 	if _, err := sdk.AccAddressFromBech32(msg.DeployerAddress); err != nil {
-		return sdkerrors.Wrapf(err, "invalid deployer address %s", msg.DeployerAddress)
+		return errorsmod.Wrapf(err, "invalid deployer address %s", msg.DeployerAddress)
 	}
 
 	if err := ethermint.ValidateNonZeroAddress(msg.ContractAddress); err != nil {
-		return sdkerrors.Wrapf(err, "invalid contract address %s", msg.ContractAddress)
+		return errorsmod.Wrapf(err, "invalid contract address %s", msg.ContractAddress)
 	}
 
 	if msg.WithdrawerAddress != "" {
 		if _, err := sdk.AccAddressFromBech32(msg.WithdrawerAddress); err != nil {
-			return sdkerrors.Wrapf(err, "invalid withdraw address %s", msg.WithdrawerAddress)
+			return errorsmod.Wrapf(err, "invalid withdraw address %s", msg.WithdrawerAddress)
 		}
 	}
 
 	if len(msg.Nonces) < 1 {
-		return sdkerrors.Wrapf(errortypes.ErrInvalidRequest, "invalid nonces - empty array")
+		return errorsmod.Wrapf(errortypes.ErrInvalidRequest, "invalid nonces - empty array")
 	}
 
 	if len(msg.Nonces) > 20 {
-		return sdkerrors.Wrapf(errortypes.ErrInvalidRequest, "invalid nonces - array length must be less than 20")
+		return errorsmod.Wrapf(errortypes.ErrInvalidRequest, "invalid nonces - array length must be less than 20")
 	}
 
 	return nil
@@ -104,11 +121,11 @@ func (msg MsgCancelRevenue) Type() string { return TypeMsgCancelRevenue }
 // ValidateBasic runs stateless checks on the message
 func (msg MsgCancelRevenue) ValidateBasic() error {
 	if _, err := sdk.AccAddressFromBech32(msg.DeployerAddress); err != nil {
-		return sdkerrors.Wrapf(err, "invalid deployer address %s", msg.DeployerAddress)
+		return errorsmod.Wrapf(err, "invalid deployer address %s", msg.DeployerAddress)
 	}
 
 	if err := ethermint.ValidateNonZeroAddress(msg.ContractAddress); err != nil {
-		return sdkerrors.Wrapf(err, "invalid contract address %s", msg.ContractAddress)
+		return errorsmod.Wrapf(err, "invalid contract address %s", msg.ContractAddress)
 	}
 
 	return nil
@@ -147,15 +164,15 @@ func (msg MsgUpdateRevenue) Type() string { return TypeMsgUpdateRevenue }
 // ValidateBasic runs stateless checks on the message
 func (msg MsgUpdateRevenue) ValidateBasic() error {
 	if _, err := sdk.AccAddressFromBech32(msg.DeployerAddress); err != nil {
-		return sdkerrors.Wrapf(err, "invalid deployer address %s", msg.DeployerAddress)
+		return errorsmod.Wrapf(err, "invalid deployer address %s", msg.DeployerAddress)
 	}
 
 	if err := ethermint.ValidateNonZeroAddress(msg.ContractAddress); err != nil {
-		return sdkerrors.Wrapf(err, "invalid contract address %s", msg.ContractAddress)
+		return errorsmod.Wrapf(err, "invalid contract address %s", msg.ContractAddress)
 	}
 
 	if _, err := sdk.AccAddressFromBech32(msg.WithdrawerAddress); err != nil {
-		return sdkerrors.Wrapf(err, "invalid withdraw address %s", msg.WithdrawerAddress)
+		return errorsmod.Wrapf(err, "invalid withdraw address %s", msg.WithdrawerAddress)
 	}
 
 	return nil
@@ -170,4 +187,28 @@ func (msg *MsgUpdateRevenue) GetSignBytes() []byte {
 func (msg MsgUpdateRevenue) GetSigners() []sdk.AccAddress {
 	from := sdk.MustAccAddressFromBech32(msg.DeployerAddress)
 	return []sdk.AccAddress{from}
+}
+
+// GetSigners returns the expected signers for a MsgUpdateParams message.
+func (m *MsgUpdateParams) GetSigners() []sdk.AccAddress {
+	addr := sdk.MustAccAddressFromBech32(m.Authority)
+	return []sdk.AccAddress{addr}
+}
+
+// ValidateBasic does a sanity check of the provided data
+func (m *MsgUpdateParams) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(m.Authority); err != nil {
+		return errorsmod.Wrap(err, "invalid authority address")
+	}
+
+	if err := m.Params.Validate(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetSignBytes implements the LegacyMsg interface.
+func (m MsgUpdateParams) GetSignBytes() []byte {
+	return sdk.MustSortJSON(AminoCdc.MustMarshalJSON(&m))
 }

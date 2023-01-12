@@ -1,16 +1,33 @@
+// Copyright 2022 Evmos Foundation
+// This file is part of the Evmos Network packages.
+//
+// Evmos is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The Evmos packages are distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+
 package keeper
 
 import (
 	"context"
 
-	sdkerrors "cosmossdk.io/errors"
+	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/evmos/evmos/v9/x/revenue/types"
+	"github.com/evmos/evmos/v11/x/revenue/types"
 )
 
 var _ types.MsgServer = &Keeper{}
@@ -30,7 +47,7 @@ func (k Keeper) RegisterRevenue(
 	contract := common.HexToAddress(msg.ContractAddress)
 
 	if k.IsRevenueRegistered(ctx, contract) {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			types.ErrRevenueAlreadyRegistered,
 			"contract is already registered %s", contract,
 		)
@@ -39,14 +56,14 @@ func (k Keeper) RegisterRevenue(
 	deployer := sdk.MustAccAddressFromBech32(msg.DeployerAddress)
 	deployerAccount := k.evmKeeper.GetAccountWithoutBalance(ctx, common.BytesToAddress(deployer))
 	if deployerAccount == nil {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			errortypes.ErrNotFound,
 			"deployer account not found %s", msg.DeployerAddress,
 		)
 	}
 
 	if deployerAccount.IsContract() {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			types.ErrRevenueDeployerIsNotEOA,
 			"deployer cannot be a contract %s", msg.DeployerAddress,
 		)
@@ -56,7 +73,7 @@ func (k Keeper) RegisterRevenue(
 	contractAccount := k.evmKeeper.GetAccountWithoutBalance(ctx, contract)
 
 	if contractAccount == nil || !contractAccount.IsContract() {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			types.ErrRevenueNoContractDeployed,
 			"no contract code found at address %s", msg.ContractAddress,
 		)
@@ -85,7 +102,7 @@ func (k Keeper) RegisterRevenue(
 	}
 
 	if contract != derivedContract {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			errortypes.ErrorInvalidSigner,
 			"not contract deployer or wrong nonce: expected %s instead of %s",
 			derivedContract, msg.ContractAddress,
@@ -114,16 +131,14 @@ func (k Keeper) RegisterRevenue(
 		"withdraw", effectiveWithdrawer,
 	)
 
-	ctx.EventManager().EmitEvents(
-		sdk.Events{
-			sdk.NewEvent(
-				types.EventTypeRegisterRevenue,
-				sdk.NewAttribute(sdk.AttributeKeySender, msg.DeployerAddress),
-				sdk.NewAttribute(types.AttributeKeyContract, msg.ContractAddress),
-				sdk.NewAttribute(types.AttributeKeyWithdrawerAddress, effectiveWithdrawer),
-			),
-		},
-	)
+	err := ctx.EventManager().EmitTypedEvent(&types.EventRegisterRevenue{
+		DeployerAddress:     msg.DeployerAddress,
+		ContractAddress:     msg.ContractAddress,
+		EffectiveWithdrawer: effectiveWithdrawer,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &types.MsgRegisterRevenueResponse{}, nil
 }
@@ -145,7 +160,7 @@ func (k Keeper) UpdateRevenue(
 	contract := common.HexToAddress(msg.ContractAddress)
 	revenue, found := k.GetRevenue(ctx, contract)
 	if !found {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			types.ErrRevenueContractNotRegistered,
 			"contract %s is not registered", msg.ContractAddress,
 		)
@@ -153,7 +168,7 @@ func (k Keeper) UpdateRevenue(
 
 	// error if the msg deployer address is not the same as the fee's deployer
 	if msg.DeployerAddress != revenue.DeployerAddress {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			errortypes.ErrUnauthorized,
 			"%s is not the contract deployer", msg.DeployerAddress,
 		)
@@ -166,7 +181,7 @@ func (k Keeper) UpdateRevenue(
 
 	// revenue with the given withdraw address is already registered
 	if msg.WithdrawerAddress == revenue.WithdrawerAddress {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			types.ErrRevenueAlreadyRegistered,
 			"revenue with withdraw address %s", msg.WithdrawerAddress,
 		)
@@ -189,16 +204,14 @@ func (k Keeper) UpdateRevenue(
 	revenue.WithdrawerAddress = msg.WithdrawerAddress
 	k.SetRevenue(ctx, revenue)
 
-	ctx.EventManager().EmitEvents(
-		sdk.Events{
-			sdk.NewEvent(
-				types.EventTypeUpdateRevenue,
-				sdk.NewAttribute(types.AttributeKeyContract, msg.ContractAddress),
-				sdk.NewAttribute(sdk.AttributeKeySender, msg.DeployerAddress),
-				sdk.NewAttribute(types.AttributeKeyWithdrawerAddress, msg.WithdrawerAddress),
-			),
-		},
-	)
+	err := ctx.EventManager().EmitTypedEvent(&types.EventUpdateRevenue{
+		ContractAddress:   msg.ContractAddress,
+		DeployerAddress:   msg.DeployerAddress,
+		WithdrawerAddress: msg.WithdrawerAddress,
+	})
+	if err != nil {
+		k.Logger(ctx).Error(err.Error())
+	}
 
 	return &types.MsgUpdateRevenueResponse{}, nil
 }
@@ -219,14 +232,14 @@ func (k Keeper) CancelRevenue(
 
 	fee, found := k.GetRevenue(ctx, contract)
 	if !found {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			types.ErrRevenueContractNotRegistered,
 			"contract %s is not registered", msg.ContractAddress,
 		)
 	}
 
 	if msg.DeployerAddress != fee.DeployerAddress {
-		return nil, sdkerrors.Wrapf(
+		return nil, errorsmod.Wrapf(
 			errortypes.ErrUnauthorized,
 			"%s is not the contract deployer", msg.DeployerAddress,
 		)
@@ -248,15 +261,30 @@ func (k Keeper) CancelRevenue(
 		)
 	}
 
-	ctx.EventManager().EmitEvents(
-		sdk.Events{
-			sdk.NewEvent(
-				types.EventTypeCancelRevenue,
-				sdk.NewAttribute(sdk.AttributeKeySender, msg.DeployerAddress),
-				sdk.NewAttribute(types.AttributeKeyContract, msg.ContractAddress),
-			),
-		},
-	)
+	err := ctx.EventManager().EmitTypedEvent(&types.EventCancelRevenue{
+		DeployerAddress: msg.DeployerAddress,
+		ContractAddress: msg.ContractAddress,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &types.MsgCancelRevenueResponse{}, nil
+}
+
+// UpdateParams implements the gRPC MsgServer interface. When an UpdateParams
+// proposal passes, it updates the module parameters. The update can only be
+// performed if the requested authority is the Cosmos SDK governance module
+// account.
+func (k *Keeper) UpdateParams(goCtx context.Context, req *types.MsgUpdateParams) (*types.MsgUpdateParamsResponse, error) {
+	if k.authority.String() != req.Authority {
+		return nil, errorsmod.Wrapf(govtypes.ErrInvalidSigner, "invalid authority; expected %s, got %s", k.authority.String(), req.Authority)
+	}
+
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := k.SetParams(ctx, req.Params); err != nil {
+		return nil, err
+	}
+
+	return &types.MsgUpdateParamsResponse{}, nil
 }
